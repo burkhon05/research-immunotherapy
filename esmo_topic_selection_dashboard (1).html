@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ESMO 2026 — New Topic Suggestions Dashboard</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+         background: #f4f6f9; color: #1a1a1a; padding: 1.5rem; min-height: 100vh; }
+
+  .w { max-width: 1100px; margin: 0 auto; }
+
+  /* ── HEADER ── */
+  .doc-header { margin-bottom: 1.25rem; }
+  .doc-header .eyebrow { font-size: 10px; color: #888; text-transform: uppercase;
+                         letter-spacing: .1em; margin-bottom: 3px; }
+  .doc-header h1 { font-size: 20px; font-weight: 600; color: #1F3C6B; }
+  .doc-header .sub { font-size: 12px; color: #666; margin-top: 3px; }
+
+  /* ── METRIC TILES ── */
+  .metrics { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-bottom: 1.25rem; }
+  .metric { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px 14px; }
+  .ml { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 3px; }
+  .mv { font-size: 22px; font-weight: 600; }
+  .mv.blue  { color: #2E6DA4; } .mv.green { color: #1A6B3C; }
+  .mv.amber { color: #7A4F00; } .mv.red   { color: #C0392B; }
+
+  /* ── TABS ── */
+  .tabs { display: flex; gap: 6px; margin-bottom: 1.25rem; flex-wrap: wrap; }
+  .tab { padding: 6px 16px; border-radius: 6px; border: 1px solid #ccc;
+         background: transparent; color: #555; cursor: pointer; font-size: 13px;
+         transition: all .15s; font-family: inherit; }
+  .tab:hover { background: #eef4fb; border-color: #2E6DA4; }
+  .tab.active { background: #eef4fb; color: #1F3C6B; border-color: #2E6DA4; font-weight: 500; }
+
+  /* ── PANELS ── */
+  .panel { display: none; } .panel.active { display: block; }
+
+  /* ── TABLE ── */
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; background: #fff;
+          border-radius: 8px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+  th { padding: 9px 10px; text-align: left; color: #555; font-weight: 500; font-size: 11px;
+       text-transform: uppercase; letter-spacing: .06em;
+       background: #f8f9fa; border-bottom: 1px solid #e0e0e0; }
+  td { padding: 9px 10px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #f4f8ff; cursor: pointer; }
+  tr.selected-row td { background: #eef4fb; }
+  .hint { font-size: 11.5px; color: #888; margin-bottom: 8px; }
+
+  /* ── SCORE DOTS ── */
+  .dots { display: flex; gap: 2px; }
+  .dot { width: 10px; height: 10px; border-radius: 2px; }
+  .d-blue   { background: #2E6DA4; } .d-green  { background: #1A6B3C; }
+  .d-amber  { background: #B07800; } .d-empty  { background: #ddd; }
+
+  /* ── BADGES ── */
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px;
+           font-size: 11px; font-weight: 500; border: 1px solid; }
+  .bg { background: #d6f0e2; color: #1A6B3C; border-color: #2E9B57; }
+  .bb { background: #d6e4f0; color: #1F3C6B; border-color: #2E6DA4; }
+  .ba { background: #fff3cd; color: #7A4F00; border-color: #B07800; }
+  .bgr{ background: #f0f0f0; color: #444;    border-color: #aaa; }
+
+  /* ── DETAIL CARD ── */
+  .detail { display: none; background: #f8f9fb; border: 1px solid #dce3ed;
+            border-radius: 8px; padding: 1rem 1.25rem; margin-top: 10px; }
+  .detail.open { display: block; }
+  .detail-header { display: flex; justify-content: space-between; align-items: flex-start;
+                   margin-bottom: 8px; }
+  .detail-title { font-weight: 600; font-size: 14px; color: #1F3C6B; }
+  .detail-desc { font-size: 12.5px; color: #555; line-height: 1.65; margin-bottom: 10px; }
+  .dg { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .dcard { background: #fff; border: 1px solid #e0e6ef; border-radius: 6px; padding: 10px 14px; }
+  .dcard-t { font-size: 10.5px; color: #888; text-transform: uppercase; letter-spacing: .08em;
+             margin-bottom: 5px; font-weight: 500; }
+  .dcard-b { font-size: 12.5px; color: #333; line-height: 1.6; }
+  .trial-list { list-style: none; padding: 0; }
+  .trial-list li::before { content: "→  "; color: #2E6DA4; }
+  .trial-list li { margin-bottom: 3px; font-size: 12px; }
+  .warn { color: #C0392B; font-size: 12px; margin-top: 6px; }
+
+  /* ── CATEGORY CARDS ── */
+  .cat-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+  .cat-card { border-radius: 8px; padding: 12px 14px; border: 1px solid #dce3ed;
+              background: #fff; cursor: pointer; transition: all .15s; }
+  .cat-card:hover { border-color: #2E6DA4; box-shadow: 0 2px 8px rgba(30,60,107,.08); }
+  .cat-card.active-cat { border: 2px solid #2E6DA4; background: #eef4fb; }
+  .cat-card-name { font-size: 13px; font-weight: 500; margin-bottom: 3px; }
+  .cat-card-sub  { font-size: 11px; color: #777; }
+  .cat-results { margin-top: 1.25rem; }
+  .cat-item { padding: 12px 0; border-bottom: 1px solid #eee; }
+  .cat-item:last-child { border-bottom: none; }
+  .cat-item-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+  .cat-item-name { font-weight: 500; font-size: 13px; }
+  .cat-item-desc { font-size: 12px; color: #555; line-height: 1.6; }
+
+  /* ── COMPARISON TABLE ── */
+  .cmp-note { font-size: 12px; color: #555; line-height: 1.65; margin-top: 12px; }
+  .tip-box { background: #d6f0e2; border: 1px solid #2E9B57; border-radius: 6px;
+             padding: 10px 14px; font-size: 12.5px; color: #1A6B3C; margin-top: 1rem;
+             line-height: 1.65; }
+  .tip-box strong { font-weight: 600; }
+
+  /* ── SUPERVISOR TIPS ── */
+  .tip-item { padding: 12px 0; border-bottom: 1px solid #eee; }
+  .tip-item:last-child { border-bottom: none; }
+  .tip-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .tip-name { font-weight: 600; font-size: 13px; color: #1F3C6B; }
+  .tip-body { font-size: 12.5px; color: #444; line-height: 1.7; }
+
+  /* ── SECTION LABEL ── */
+  .sl { font-size: 10.5px; color: #888; text-transform: uppercase; letter-spacing: .09em;
+        margin-bottom: 10px; font-weight: 500; margin-top: 1rem; }
+
+  /* ── FOOTER ── */
+  .footer { margin-top: 2rem; text-align: center; font-size: 11px; color: #aaa; }
+
+  @media (max-width: 700px) {
+    .metrics { grid-template-columns: repeat(2,1fr); }
+    .cat-grid { grid-template-columns: repeat(2,1fr); }
+    .dg { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="w">
+
+  <!-- HEADER -->
+  <div class="doc-header">
+    <div class="eyebrow">ESMO 2026 · PhD Systematic Review Programme · New Topic Landscape</div>
+    <h1>Additional Systematic Review Candidates</h1>
+    <div class="sub">10 new topics across 7 ESMO categories · scored on 4 criteria · click any row for full assessment</div>
+  </div>
+
+  <!-- METRIC TILES -->
+  <div class="metrics">
+    <div class="metric"><div class="ml">New candidates</div><div class="mv blue">10</div></div>
+    <div class="metric"><div class="ml">Top picks (≥17/20)</div><div class="mv green">3</div></div>
+    <div class="metric"><div class="ml">ESMO categories covered</div><div class="mv">7</div></div>
+    <div class="metric"><div class="ml">NMA-feasible topics</div><div class="mv amber">5</div></div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('table',this)">All topics</button>
+    <button class="tab" onclick="switchTab('category',this)">By ESMO category</button>
+    <button class="tab" onclick="switchTab('compare',this)">vs. SCLC topic</button>
+    <button class="tab" onclick="switchTab('tips',this)">Supervisor notes</button>
+  </div>
+
+  <!-- ── TABLE PANEL ── -->
+  <div class="panel active" id="panel-table">
+    <div class="hint">Click any row to expand full assessment</div>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th><th>Topic</th><th>ESMO category</th>
+          <th>Data</th><th>Gap</th><th>ESMO fit</th><th>Impact</th>
+          <th>NMA?</th><th>Existing SR?</th><th>Score</th><th>Tier</th>
+        </tr>
+      </thead>
+      <tbody id="main-tbody"></tbody>
+    </table>
+    <div id="main-detail" class="detail"></div>
+  </div>
+
+  <!-- ── CATEGORY PANEL ── -->
+  <div class="panel" id="panel-category">
+    <div class="sl">Browse by ESMO congress category</div>
+    <div class="cat-grid" id="cat-grid"></div>
+    <div class="cat-results" id="cat-list"></div>
+  </div>
+
+  <!-- ── COMPARE PANEL ── -->
+  <div class="panel" id="panel-compare">
+    <div class="sl">Head-to-head: new topics vs. your current SCLC topic</div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr>
+            <th>Criteria</th>
+            <th style="color:#1A6B3C">ICI in ES-SCLC (current)</th>
+            <th id="cmp-h1"></th><th id="cmp-h2"></th><th id="cmp-h3"></th>
+          </tr>
+        </thead>
+        <tbody id="cmp-tbody"></tbody>
+      </table>
+    </div>
+    <div class="cmp-note">
+      Showing top 3 new candidates vs. your current SCLC topic. The SCLC topic remains the strongest single option for a first PhD publication due to its dedicated congress category, 7 mature Phase III trials, and NMA feasibility. These three are the strongest alternatives if you want a second publication or parallel project.
+    </div>
+    <div class="tip-box">
+      <strong>Strategic option:</strong> Topics #1, #2, and #3 could function as a second publication from the same PhD — sharing infrastructure (Covidence account, R environment, GRADE templates) while covering a different tumour type. This is how high-output PhD students build a 3-paper thesis in 2 years.
+    </div>
+  </div>
+
+  <!-- ── SUPERVISOR TIPS PANEL ── -->
+  <div class="panel" id="panel-tips">
+    <div class="sl">Supervisor assessment — clinical and strategic notes</div>
+    <div id="tips-list"></div>
+  </div>
+
+  <div class="footer">ESMO 2026 Topic Landscape · PhD Systematic Review Programme · March 2026</div>
+</div>
+
+<script>
+const TOPICS = [
+  {
+    id:1, name:"ICI + anti-VEGF in advanced HCC (first-line NMA)",
+    category:"Hepatocellular carcinoma", catShort:"HCC",
+    data:5, gap:5, esmo:5, impact:4, nma:true, existSR:false,
+    score:19, tier:"Top pick",
+    trials:["IMbrave150 (atezo+bev, mOS 19.2m, HR 0.66)",
+            "HIMALAYA (treme+durva STRIDE, mOS 16.4m, HR 0.78)",
+            "LEAP-002 (pembro+lenvatinib — FAILED OS, ORR 26%)",
+            "ORIENT-32 (sintilimab+bev, China population)",
+            "CARES-310 (camrelizumab+apatinib)"],
+    gap_desc:"Five Phase III trials, four different ICI regimens, no NMA comparing them. IMbrave150 and HIMALAYA are both FDA-approved but clinicians have no head-to-head data. The LEAP-002 failure despite high ORR remains a paradox unexplained by any systematic synthesis. ESMO has a dedicated HCC session and this question is front of mind for all GI oncologists globally.",
+    why_now:"HIMALAYA and IMbrave150 are both approved but never directly compared. LEAP-002's OS failure despite the highest ORR raises an important question about surrogate endpoint validity. CARES-310 adds a VEGFR TKI + ICI combination node. A comprehensive NMA answering 'which regimen first?' does not exist.",
+    methodology:"NMA across 5 active nodes + sorafenib control. OS as primary endpoint. Subgroup: AFP level (≥400 vs <400 ng/mL), viral etiology (HBV/HCV/non-viral), vascular invasion (portal vein), BCLC stage.",
+    journal:"Journal of Hepatology (IF ~26) or Annals of Oncology",
+    weakness:"Heterogeneous comparators (some PD-L1+CTLA-4, some PD-1+VEGF) — transitivity must be carefully justified. CARES-310 and ORIENT-32 are predominantly Chinese populations.",
+    cmp:["5/5","5/5","5/5","4/5","Yes","None found","19/20"]
+  },
+  {
+    id:2, name:"ADC sequencing in HR+/HER2− metastatic breast cancer",
+    category:"Breast cancer", catShort:"Breast",
+    data:4, gap:5, esmo:5, impact:5, nma:false, existSR:false,
+    score:19, tier:"Top pick",
+    trials:["TROPION-Breast01 (Dato-DXd, mPFS 6.9m vs 4.9m, FDA Jan 2025)",
+            "ASCENT-03 (sacituzumab govitecan vs chemo in HR+)",
+            "ASCENT-04/KEYNOTE-D19 (SG+pembro 1L TNBC, Phase III)",
+            "TROPion-Breast02 (Dato-DXd in TNBC, ongoing)",
+            "DESTINY-Breast09 (T-DXd+pembro 1L HER2+, Phase III)"],
+    gap_desc:"Dato-DXd received FDA approval in January 2025 for HR+/HER2− metastatic breast cancer. Sacituzumab govitecan (SG) is established in both TNBC and HR+ lines. Both are TROP-2-targeting ADCs with identical topoisomerase-I payloads. Oncologists face a daily choice between them with zero comparative evidence. No systematic review on ADC sequencing, cross-resistance, or optimal ordering after prior ADC exposure exists.",
+    why_now:"ASCENT-03 and TROPION-Breast01 both reported 2024-2025. There is zero comparative evidence on ADC sequencing in HR+/HER2− breast cancer and oncologists are making daily decisions without any guidance. The cross-resistance question (does prior Dato-DXd prevent SG response?) is completely unanswered.",
+    methodology:"Narrative SR with comparative synthesis. Primary: ORR and PFS by TROP-2 expression level (H-score). Secondary: cross-resistance analysis — response rate to 2nd ADC after progression on 1st ADC. No NMA feasible due to population heterogeneity.",
+    journal:"Annals of Oncology or JCO (breast cancer section)",
+    weakness:"Population heterogeneity between trials makes formal meta-analysis difficult. Primary value is narrative synthesis + clinical algorithm. TROP-2 expression scoring not yet standardised.",
+    cmp:["4/5","5/5","5/5","5/5","No","None found","19/20"]
+  },
+  {
+    id:3, name:"ICI in dMMR/MSI-H endometrial cancer (first-line NMA)",
+    category:"Gynaecological oncology", catShort:"Gynaecology",
+    data:4, gap:5, esmo:4, impact:5, nma:true, existSR:false,
+    score:18, tier:"Strong",
+    trials:["RUBY (dostarlimab+carbo/pac, dMMR HR 0.64, OS now available)",
+            "KEYNOTE-868/NRG GY018 (pembro+chemo, mPFS 13.1m vs 8.7m)",
+            "DUO-E (durvalumab+olaparib maintenance, Phase III)",
+            "AtTEnd (atezolizumab+carbo/pac, ongoing)",
+            "ENGOT-EN11/GOG3053 (nivolumab+ipilimumab, 2L data)"],
+    gap_desc:"Four Phase III trials completed 2023-2025. RUBY and KEYNOTE-868 are both practice-changing and already reshaping ESMO guidelines. But the critical clinical question remains: does dostarlimab equal pembrolizumab? Does adding olaparib (DUO-E) provide OS benefit over ICI alone? No NMA has been published answering these questions.",
+    why_now:"RUBY and KEYNOTE-868 both reported in 2023 and are practice-changing. OS data are now available for both. The dostarlimab vs pembrolizumab comparison is made daily by oncologists without direct evidence — and an NMA has not been published to provide indirect evidence.",
+    methodology:"NMA: dostarlimab, pembrolizumab, durvalumab±olaparib vs carboplatin+paclitaxel in dMMR/MSI-H subgroup. OS primary endpoint. Secondary: PFS, ORR, Grade 3-4 irAE rates.",
+    journal:"Annals of Oncology (Gynaecology section) or JCO",
+    weakness:"AtTEnd and DUO-E use combination endpoints (ICI+PARP) — must decide whether to treat as separate nodes or a separate review. dMMR subgroup sizes vary across trials.",
+    cmp:["4/5","5/5","4/5","5/5","Yes","None found","18/20"]
+  },
+  {
+    id:4, name:"Neoadjuvant ICI in muscle-invasive bladder cancer (NMA)",
+    category:"Urothelial / GU oncology", catShort:"Bladder / GU",
+    data:4, gap:4, esmo:4, impact:4, nma:true, existSR:false,
+    score:16, tier:"Promising",
+    trials:["NIAGARA (durvalumab neoadjuvant+adjuvant, Phase III positive 2024)",
+            "EV-304/KEYNOTE-B15 (EV+pembro neoadjuvant, Phase III awaited)",
+            "KEYNOTE-866 (pembro+gem/cis neoadjuvant, ongoing)",
+            "JAVELIN Bladder 100 (avelumab adjuvant maintenance, positive)",
+            "Phase II neoadjuvant ICI data (2020-2024)"],
+    gap_desc:"NIAGARA just reported positive results in 2024 — the first positive Phase III ICI trial in neoadjuvant MIBC. EV-304 is awaited. No comprehensive SR synthesises pCR rates across all neoadjuvant strategies, or compares pure ICI vs ADC+ICI neoadjuvant approaches.",
+    why_now:"NIAGARA just read out. EV-304 results expected 2025-2026. This is an emerging paradigm with immediate guideline implications. Best timing would be after EV-304 reports to have 2+ Phase III trials to compare.",
+    methodology:"SR and meta-analysis of pCR rates and event-free survival. Subgroup: cisplatin-eligible vs ineligible, PD-L1 CPS expression. Sensitivity: ICI-only vs ICI+ADC.",
+    journal:"European Urology (IF ~30) or Annals of Oncology",
+    weakness:"Different surgical timing protocols across trials. pCR as a surrogate endpoint for survival is still debated in bladder cancer. Slightly early — best pursued after EV-304 reports.",
+    cmp:["4/5","4/5","4/5","4/5","Yes","Partial (older SRs)","16/20"]
+  },
+  {
+    id:5, name:"T-DXd pan-tumour efficacy and HER2 expression SR",
+    category:"Translational / precision medicine", catShort:"HER2 pan-tumour",
+    data:4, gap:4, esmo:4, impact:4, nma:false, existSR:false,
+    score:16, tier:"Promising",
+    trials:["DESTINY-PanTumor02 (basket trial, 7 tumour types, 2023)",
+            "DESTINY-Breast03/06/09 (breast cancer)",
+            "DESTINY-Lung01/02 (NSCLC)",
+            "DESTINY-CRC01/02 (colorectal, accelerated approval)",
+            "DESTINY-Gastric01/02 (gastric/GEJ)"],
+    gap_desc:"T-DXd is approved across four tumour types and discussed for tumour-agnostic approval. No systematic review synthesises cross-tumour ORR with HER2 IHC score (1+/2+/3+) as a continuous biomarker predictor — the precision medicine question underpinning tumour-agnostic approval discussions globally.",
+    why_now:"DESTINY-PanTumor02 basket trial published 2023. T-DXd is being discussed for tumor-agnostic approval based on HER2 expression. A systematic review quantifying ORR by HER2 IHC score across all tumour types is urgently needed for regulatory and clinical guidance.",
+    methodology:"Systematic review with meta-regression. ORR stratified by HER2 IHC score (1+/2+/3+) and tumour type. ILD rate as separate primary safety endpoint by tumour type and dosing. No NMA — single agent, different populations.",
+    journal:"Nature Cancer (IF ~22) or Cancer Cell (IF ~23)",
+    weakness:"Cross-tumour heterogeneity is inherent. Different dosing used (5.4 vs 6.4 mg/kg). ILD rates differ substantially by tumour type — needs careful separate analysis.",
+    cmp:["4/5","4/5","4/5","4/5","No","Partial","16/20"]
+  },
+  {
+    id:6, name:"PARP inhibitor maintenance in HRD+ ovarian cancer — OS NMA",
+    category:"Gynaecological oncology", catShort:"Gynaecology",
+    data:5, gap:3, esmo:4, impact:4, nma:true, existSR:true,
+    score:16, tier:"Promising",
+    trials:["SOLO-1 (olaparib 1L BRCA-mutated, 5-year OS now published)",
+            "PRIMA/ENGOT-OV26 (niraparib HRD-positive)",
+            "PAOLA-1 (olaparib+bev — does adding bev improve OS?)",
+            "ATHENA-MONO/COMBO (rucaparib, now withdrawn)",
+            "VELIA (veliparib+chemotherapy, exploratory)"],
+    gap_desc:"Multiple SRs exist on PARP inhibitor PFS. However, OS data for SOLO-1, PRIMA, and PAOLA-1 are now mature (5-year follow-up). No NMA has specifically compared OS outcomes across agents. The OS NMA has not been done — this is the novel contribution.",
+    why_now:"5-year OS data from SOLO-1, PRIMA, and PAOLA-1 are all now published. Most existing SRs use PFS only. The OS question — particularly whether adding bevacizumab to olaparib (PAOLA-1) improves OS vs olaparib alone — has never been answered by NMA.",
+    methodology:"NMA on OS data only (5-year follow-up). BRCA-mutated and HRD-positive subgroups separately. Key comparison: PAOLA-1 olaparib+bev vs SOLO-1 olaparib alone.",
+    journal:"JCO or Gynecologic Oncology",
+    weakness:"Existing SRs on PFS are saturated — must clearly position as OS-focused NMA. Rucaparib was withdrawn from the US market, reducing its clinical relevance as a node.",
+    cmp:["5/5","3/5","4/5","4/5","Yes","Yes (PFS-focused)","16/20"]
+  },
+  {
+    id:7, name:"ICI rechallenge in solid tumors — efficacy and predictors",
+    category:"Translational / immunotherapy", catShort:"Immuno-oncology",
+    data:3, gap:5, esmo:3, impact:4, nma:false, existSR:false,
+    score:15, tier:"Promising",
+    trials:["KEYNOTE-158 retreatment subgroup (pembrolizumab rechallenge data)",
+            "NSCLC rechallenge cohorts published 2022-2025 (multiple centres)",
+            "Melanoma rechallenge retrospective studies",
+            "SCLC rechallenge real-world data (2023-2025)"],
+    gap_desc:"ICI rechallenge is happening in clinical practice daily but there is NO systematic evidence synthesis. As patients live longer on ICI and eventually progress, the question of whether and when to re-treat — and which patients respond — is increasingly critical. Multiple retrospective cohorts published 2022-2025 without synthesis.",
+    why_now:"Multiple retrospective cohorts across NSCLC, melanoma, and SCLC published 2022-2025 remain unsynthesised. The rechallenge question is asked at every tumour board and multidisciplinary meeting. No systematic evidence to guide decisions.",
+    methodology:"Systematic review and pooled analysis of ORR to rechallenge. ROBINS-I for all retrospective studies. Subgroup: tumour type, prior ICI duration, time off ICI, primary vs acquired resistance.",
+    journal:"Journal for ImmunoTherapy of Cancer (JItC) or Annals of Oncology",
+    weakness:"Predominantly retrospective data — GRADE certainty will be Very Low for all outcomes. Suitable for JItC but unlikely to reach Annals of Oncology without prospective data.",
+    cmp:["3/5","5/5","3/5","4/5","No","None found","15/20"]
+  },
+  {
+    id:8, name:"Enfortumab vedotin + pembrolizumab in urothelial carcinoma",
+    category:"Urothelial / GU oncology", catShort:"Bladder / GU",
+    data:4, gap:3, esmo:4, impact:4, nma:false, existSR:false,
+    score:15, tier:"Promising",
+    trials:["EV-302/KEYNOTE-A39 (Phase III, mOS 31.5m vs 16.1m, HR 0.47, FDA Nov 2023)",
+            "EV-103 Cohorts A-K (Phase Ib dose and combination finding)",
+            "EV-201 (EV monotherapy 2L post-platinum+ICI)",
+            "Real-world registry data 2024-2025",
+            "EV-304 (neoadjuvant, awaited)"],
+    gap_desc:"EV-302 is practice-changing — the largest OS benefit seen in urothelial carcinoma (HR 0.47). No systematic review consolidates efficacy data from EV-103 through EV-302 and real-world 2024-2025 cohorts, with comprehensive subgroup and unique toxicity analysis (peripheral neuropathy, dermatotoxicity).",
+    why_now:"FDA approved November 2023. Real-world data emerging through 2025. No SR has been published consolidating all efficacy and safety data with focus on unique toxicity profile and subgroup outcomes (cisplatin-eligible vs ineligible, liver mets, PD-L1 status).",
+    methodology:"Single-intervention SR with comprehensive subgroup and long-term safety analysis. Key toxicities: grade 3-4 peripheral neuropathy (MMAE payload) and skin reactions. Subgroup: PD-L1 CPS, liver metastases, cisplatin eligibility.",
+    journal:"European Urology (IF ~30) or Annals of Oncology",
+    weakness:"EV-302 is so dominant that SR may read as glorified review of one trial. Must frame around subgroups and long-term safety as the novel contribution.",
+    cmp:["4/5","3/5","4/5","4/5","No","None found","15/20"]
+  },
+  {
+    id:9, name:"TROP-2 ADC class comparison (Dato-DXd vs SG) — indirect NMA",
+    category:"Translational / precision medicine", catShort:"ADC / TROP-2",
+    data:3, gap:4, esmo:3, impact:4, nma:true, existSR:false,
+    score:14, tier:"Viable",
+    trials:["TROPION-Breast01 (Dato-DXd in HR+/HER2−, FDA Jan 2025)",
+            "ASCENT-03 (SG in HR+/HER2−, 2024)",
+            "ASCENT-02 (SG in TNBC — for sensitivity analysis)",
+            "TROPION-Breast02 (Dato-DXd in TNBC, ongoing)"],
+    gap_desc:"Two TROP-2 ADCs FDA-approved with overlapping indications. Oncologists choosing between Dato-DXd and SG in HR+/HER2− breast cancer have no head-to-head data. An indirect treatment comparison using HR+/HER2− as the shared population is methodologically sound and clinically relevant.",
+    why_now:"Both agents now FDA-approved in overlapping populations. Oncologists and payers are being asked to choose between them without any comparative data. An ITC is the best currently available method to provide evidence.",
+    methodology:"Indirect treatment comparison (ITC) using Bucher method in HR+/HER2− population. TROP-2 expression meta-regression. Safety comparison: stomatitis (Dato-DXd) vs neutropenia/neuropathy (SG) by organ class.",
+    journal:"Annals of Oncology or Breast Cancer Research",
+    weakness:"Trial populations differ in prior treatment lines — transitivity must be carefully justified. TROP-2 scoring criteria not standardised between TROPION and ASCENT trials.",
+    cmp:["3/5","4/5","3/5","4/5","Partial","None (direct)","14/20"]
+  },
+  {
+    id:10, name:"Chemoimmunotherapy sequencing in HER2+ gastric/GEJ cancer",
+    category:"Gastric / GI oncology", catShort:"Gastric / GI",
+    data:4, gap:3, esmo:4, impact:4, nma:false, existSR:true,
+    score:15, tier:"Viable",
+    trials:["KEYNOTE-811 (pembro+trastuzumab+chemo, mOS 20.0m, HR 0.81, OS 2024)",
+            "ToGA (trastuzumab alone — historical reference, 2010)",
+            "DESTINY-Gastric01 (T-DXd 2L, ORR 51%, FDA approved)",
+            "DESTINY-Gastric02 (T-DXd Western population, mOS 12.1m)",
+            "HER2CLIMB-04 (tucatinib+T-DXd, ongoing Phase II)"],
+    gap_desc:"KEYNOTE-811 established pembrolizumab+trastuzumab+chemotherapy as first-line standard with OS benefit. T-DXd is approved second-line. Key unresolved question: is first-line ICI+trastuzumab the optimal strategy when T-DXd is available second-line? HER2 switching (loss, ~30-50% of cases after trastuzumab) makes sequencing critical.",
+    why_now:"KEYNOTE-811 OS data published 2024. DESTINY-Gastric02 Western data emerging. The ICI+trastuzumab → T-DXd sequencing question is discussed at every GI tumour board but has never been systematically addressed.",
+    methodology:"Systematic review of first and second-line HER2+ gastric cancer with sequencing focus and HER2 dynamics analysis. Not NMA — sequencing is the question, not head-to-head efficacy.",
+    journal:"JAMA Oncology or Annals of Oncology (GI section)",
+    weakness:"Existing SRs on HER2+ gastric cancer (general) are published. Must clearly differentiate as a sequencing-focused SR. Zanidatamab Phase III data still pending.",
+    cmp:["4/5","3/5","4/5","4/5","No","Yes (general)","15/20"]
+  }
+];
+
+const TIPS = [
+  { t:"ICI + anti-VEGF in HCC", priority:"High",
+    note:"This is your strongest alternative to SCLC. Five Phase III trials, dedicated ESMO HCC category, massive clinical impact. The HIMALAYA vs IMbrave150 debate is unresolved in 2026 and guidelines have not settled. If your background allows a pivot to GI oncology, this would be equally publishable in a top-tier journal (Journal of Hepatology IF ~26). The NMA is feasible and the transitivity question (viral vs non-viral, AFP) adds scientific depth." },
+  { t:"ADC sequencing in HR+/HER2− breast", priority:"High",
+    note:"The most immediately clinically relevant topic for practicing oncologists today. Dato-DXd received FDA approval in January 2025 and oncologists are choosing between it and sacituzumab govitecan with no comparative data. This is a narrative SR — methodology is achievable within your existing timeline. Breast cancer has the largest ESMO audience of any tumour type. If you want maximum visibility for a second paper, this is it." },
+  { t:"ICI in dMMR/MSI-H endometrial cancer", priority:"High",
+    note:"RUBY and KEYNOTE-868 are practice-changing trials published 2023-2024 — the NMA timing is perfect. ESMO gynaecological oncology has dedicated sessions and this question (dostarlimab vs pembrolizumab) is clinically urgent. No one has done the NMA yet. This is clean, well-defined, feasible work that fits squarely in your existing methodology framework." },
+  { t:"Neoadjuvant ICI in bladder", priority:"Medium",
+    note:"Emerging area — NIAGARA just reported. Best suited if you can capture EV-304 data when it reports in 2026. May be slightly too early for a comprehensive SR by the May 2026 ESMO deadline unless you limit scope to pCR rates from already-published Phase III data. Worth watching closely." },
+  { t:"T-DXd pan-tumour SR", priority:"Medium",
+    note:"Scientifically exciting — HER2 as a tumour-agnostic target is the precision medicine question of the decade. DESTINY-PanTumor02 already covers some of this analysis internally. The novel contribution must be clearly defined as a cross-study meta-regression of HER2 expression level vs ORR. Nature Cancer or Cancer Cell would be the target journals." },
+  { t:"ICI rechallenge SR", priority:"Lower",
+    note:"Very high gap clarity — literally no systematic evidence exists on this question. But predominantly retrospective data means GRADE certainty will be Very Low for every outcome. Suitable for Journal for ImmunoTherapy of Cancer but unlikely to reach Annals of Oncology. Consider this a lower-tier publication project rather than a primary PhD paper." },
+];
+
+const TIER_CLASS = {
+  "Top pick":"bg", "Strong":"bb", "Promising":"ba", "Viable":"bgr"
+};
+
+function dots(n, max, cls) {
+  let h = '<div class="dots">';
+  for (let i = 0; i < max; i++) h += `<div class="dot ${i < n ? cls : 'd-empty'}"></div>`;
+  return h + '</div>';
+}
+
+let selectedId = null;
+
+// ── RENDER TABLE ──
+function renderTable() {
+  const tb = document.getElementById('main-tbody');
+  tb.innerHTML = TOPICS.map(t => `
+    <tr id="row-${t.id}" onclick="selectRow(${t.id})" ${selectedId===t.id?'class="selected-row"':''}>
+      <td style="font-weight:600;color:#888">${t.id}</td>
+      <td style="font-weight:500;max-width:200px">${t.name}</td>
+      <td style="font-size:11.5px;color:#666">${t.catShort}</td>
+      <td>${dots(t.data,5,'d-blue')}</td>
+      <td>${dots(t.gap,5,'d-green')}</td>
+      <td>${dots(t.esmo,5,'d-amber')}</td>
+      <td>${dots(t.impact,5,'d-amber')}</td>
+      <td style="font-size:12px;color:${t.nma?'#1A6B3C':'#C0392B'};font-weight:500">${t.nma?'✓ Yes':'✗ No'}</td>
+      <td style="font-size:12px;color:${t.existSR?'#C0392B':'#1A6B3C'}">${t.existSR?'⚠ Partial':'✓ None'}</td>
+      <td style="font-weight:600;font-size:15px;color:${t.score>=18?'#1A6B3C':t.score>=15?'#1F3C6B':'#7A4F00'}">${t.score}</td>
+      <td><span class="badge ${TIER_CLASS[t.tier]||'bgr'}">${t.tier}</span></td>
+    </tr>`).join('');
+}
+
+function selectRow(id) {
+  const det = document.getElementById('main-detail');
+  if (selectedId === id) {
+    selectedId = null;
+    det.classList.remove('open');
+    det.innerHTML = '';
+    renderTable();
+    return;
+  }
+  selectedId = id;
+  renderTable();
+  const t = TOPICS.find(x => x.id === id);
+  det.classList.add('open');
+  det.innerHTML = `
+    <div class="detail-header">
+      <div class="detail-title">${t.name}</div>
+      <span class="badge ${TIER_CLASS[t.tier]}">${t.tier} · ${t.score}/20</span>
+    </div>
+    <div class="detail-desc">${t.gap_desc}</div>
+    <div class="dg">
+      <div class="dcard">
+        <div class="dcard-t">Why act now</div>
+        <div class="dcard-b">${t.why_now}</div>
+      </div>
+      <div class="dcard">
+        <div class="dcard-t">Methodology</div>
+        <div class="dcard-b">${t.methodology}</div>
+      </div>
+      <div class="dcard">
+        <div class="dcard-t">Key trials</div>
+        <ul class="trial-list">${t.trials.map(tr=>`<li>${tr}</li>`).join('')}</ul>
+      </div>
+      <div class="dcard">
+        <div class="dcard-t">Target journal</div>
+        <div class="dcard-b">${t.journal}<div class="warn"><strong>Limitation:</strong> ${t.weakness}</div></div>
+      </div>
+    </div>`;
+  det.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+
+// ── RENDER CATEGORIES ──
+function renderCategories() {
+  const cats = {};
+  TOPICS.forEach(t => { cats[t.category] = cats[t.category] || []; cats[t.category].push(t); });
+  const cg = document.getElementById('cat-grid');
+  cg.innerHTML = Object.entries(cats).map(([cat, ts]) => `
+    <div class="cat-card" id="cat-${CSS.escape(cat)}" onclick="filterCat('${cat.replace(/'/g,"\\'")}')">
+      <div class="cat-card-name">${cat}</div>
+      <div class="cat-card-sub">${ts.length} topic${ts.length>1?'s':''}</div>
+    </div>`).join('');
+}
+
+let activeCat = null;
+function filterCat(cat) {
+  const cl = document.getElementById('cat-list');
+  if (activeCat === cat) {
+    activeCat = null;
+    document.querySelectorAll('.cat-card').forEach(c => c.classList.remove('active-cat'));
+    cl.innerHTML = '';
+    return;
+  }
+  activeCat = cat;
+  document.querySelectorAll('.cat-card').forEach(c => c.classList.remove('active-cat'));
+  const el = document.getElementById('cat-'+CSS.escape(cat));
+  if (el) el.classList.add('active-cat');
+  const items = TOPICS.filter(t => t.category === cat);
+  cl.innerHTML = `<div class="sl">${cat} — ${items.length} topic${items.length>1?'s':''}</div>` +
+    items.map(t => `
+      <div class="cat-item">
+        <div class="cat-item-hdr">
+          <span class="cat-item-name">${t.name}</span>
+          <span class="badge ${TIER_CLASS[t.tier]}">${t.tier} · ${t.score}/20</span>
+        </div>
+        <div class="cat-item-desc">${t.gap_desc}</div>
+      </div>`).join('');
+}
+
+// ── RENDER COMPARE ──
+function renderCompare() {
+  const top3 = TOPICS.filter(t => t.score >= 18).slice(0, 3);
+  const sclc = ["5/5","4/5","5/5","4/5","Yes","None","18/20"];
+  const criteria = ["Data abundance","Gap clarity","ESMO fit","Impact potential","NMA feasible","Existing SR","Total score"];
+  top3.forEach((t, i) => {
+    const h = document.getElementById(`cmp-h${i+1}`);
+    if (h) h.textContent = t.name.length > 35 ? t.name.slice(0, 33)+'…' : t.name;
+  });
+  document.getElementById('cmp-tbody').innerHTML = criteria.map((c, i) => `
+    <tr>
+      <td style="font-weight:500;font-size:12px;color:#555">${c}</td>
+      <td style="font-weight:600;color:#1A6B3C">${sclc[i]}</td>
+      ${top3.map(t => `<td style="font-size:12.5px">${t.cmp[i]}</td>`).join('')}
+    </tr>`).join('');
+}
+
+// ── RENDER TIPS ──
+function renderTips() {
+  const tl = document.getElementById('tips-list');
+  const pc = { High:'bg', Medium:'ba', Lower:'bgr' };
+  tl.innerHTML = TIPS.map(tip => `
+    <div class="tip-item">
+      <div class="tip-hdr">
+        <span class="tip-name">${tip.t}</span>
+        <span class="badge ${pc[tip.priority]}">${tip.priority} priority</span>
+      </div>
+      <div class="tip-body">${tip.note}</div>
+    </div>`).join('');
+}
+
+// ── TAB SWITCH ──
+function switchTab(name, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('panel-' + name).classList.add('active');
+}
+
+// ── INIT ──
+renderTable();
+renderCategories();
+renderCompare();
+renderTips();
+</script>
+</body>
+</html>
